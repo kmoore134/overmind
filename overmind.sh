@@ -14,11 +14,12 @@ EOF
 
 locate_pool
 if [ $? -ne 0 ] ; then
-  do_init  
-  exit $?
+  echo "overmind has not yet been setup. Please run 'overmind init'"
+  exit 0
 fi
 
 case $1 in
    restart_dhcpd) enable_dhcpd ;;
+   init) do_init ;;
    *) usage ;;
 esac

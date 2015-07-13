@@ -96,11 +96,12 @@ enable_dhcpd()
   /etc/rc.d/netif start $NIC
 
   # Make sure tftpd is enabled
-  grep -q "" /etc/inetd.conf
+  grep -q "${PXEWORLD}" /etc/inetd.conf
   if [ $? -ne 0 ] ; then
     echo "tftp   dgram   udp     wait    root    /usr/libexec/tftpd      tftpd -l -s ${PXEWORLD}" >> /etc/inetd.conf
   fi
-  sysrc -f /etc/rc.conf inetd_start="YES"
+  sysrc -f /etc/rc.conf inetd_enable="YES"
+  service inetd stop >/dev/null 2>/dev/null
   service inetd start
 
   # Copy over the dhcp.conf.default
@@ -119,7 +120,10 @@ enable_dhcpd()
   sed -i '' "s|%%DHCPENDRANGE%%|${VAL}|g" ${PREFIX}/etc/dhcpd.conf
 
   sed -i '' "s|%%PXEROOT%%|${PXEROOT}|g" ${PREFIX}/etc/dhcpd.conf
-  sed -i '' "s|%%GRUBPXE%%|${PXEROOT}/default-node/i386-pc/core.0|g" ${PREFIX}/etc/dhcpd.conf
+  sed -i '' "s|%%GRUBPXE%%|default-node/i386-pc/core.0|g" ${PREFIX}/etc/dhcpd.conf
+
+  service isc-dhcpd stop >/dev/null 2>/dev/null
+  service isc-dhcpd start
 }
 
 get_default_node()
