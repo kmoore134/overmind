@@ -16,6 +16,7 @@ locate_pool
 if [ $? -ne 0 ] ; then
   if [ ${1} = "init" ] ; then
     do_init
+    exit $?
   fi
   echo "overmind has not yet been setup. Please run 'overmind init'"
   exit 0

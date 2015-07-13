@@ -152,8 +152,14 @@ setup_default_grub()
   sed -i '' "s|%%PXESERVERIP%%|${VAL}|g" ${DNODE}/boot/grub/grub.cfg
   sed -i '' "s|%%PXEROOT%%|${DNODE}|g" ${DNODE}/boot/grub/grub.cfg
 
+  if [ -d "${PXEROOT}/default-node" ] ; then
+    rm -rf ${PXEROOT}/default-node
+  fi
+
   # Create the grub default PXE file
   grub-mknetdir --net-directory=${PXEROOT} --subdir=default-node
+  mkdir ${PXEROOT}/default-node/boot
+  cp -r ${DNODE}/boot/kernel ${PXEROOT}/default-node/boot/kernel
   cp ${DNODE}/boot/grub/grub.cfg ${PXEROOT}/default-node/grub.cfg
 }
 

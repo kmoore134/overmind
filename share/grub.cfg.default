@@ -9,17 +9,10 @@ menuentry 'OverMind Default PXE Boot' --class os {
 
   set net_default_server=%%PXESERVERIP%%
 
-  net_bootp
-
   echo 'Loading network kernel:'
-  kfreebsd (tftp)/boot/kernel/kernel
-  kfreebsd_loadenv (tftp)/boot/device.hints
+  kfreebsd (tftp)/default-node/boot/kernel/kernel
+  kfreebsd_loadenv (tftp)/default-node/boot/device.hints
   set kFreeBSD.vfs.root.mountfrom=%%PXESERVERIP%%:%%PXEROOT%%
-  kfreebsd_module_elf (tftp)/boot/kernel/opensolaris.ko
-  kfreebsd_module_elf (tftp)/boot/kernel/zfs.ko
-  kfreebsd_module_elf (tftp)/boot/kernel/tmpfs.ko
-  kfreebsd_module_elf (tftp)/boot/kernel/crypto.ko
-  kfreebsd_module_elf (tftp)/boot/kernel/geom_journal.ko
-  kfreebsd_module_elf (tftp)/boot/kernel/geom_mirror.ko
-  kfreebsd_module_elf (tftp)/boot/kernel/geom_eli.ko
+  kfreebsd_module_elf (tftp)/default-node/boot/kernel/tmpfs.ko
+  kfreebsd_module_elf (tftp)/default-node/boot/kernel/crypto.ko
 }
