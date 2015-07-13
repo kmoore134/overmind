@@ -100,6 +100,7 @@ enable_dhcpd()
   if [ $? -ne 0 ] ; then
     echo "tftp   dgram   udp     wait    root    /usr/libexec/tftpd      tftpd -l -s ${PXEWORLD}" >> /etc/inetd.conf
   fi
+  sysrc -f /etc/rc.conf inetd_start="YES"
   service inetd start
 
   # Copy over the dhcp.conf.default
@@ -118,7 +119,7 @@ enable_dhcpd()
   sed -i '' "s|%%DHCPENDRANGE%%|${VAL}|g" ${PREFIX}/etc/dhcpd.conf
 
   sed -i '' "s|%%PXEROOT%%|${PXEROOT}|g" ${PREFIX}/etc/dhcpd.conf
-  sed -i '' "s|%%GRUBPXE%%|${PXEROOT}/grub-default.pxe|g" ${PREFIX}/etc/dhcpd.conf
+  sed -i '' "s|%%GRUBPXE%%|${PXEROOT}/default-node/i386-pc/core.0|g" ${PREFIX}/etc/dhcpd.conf
 }
 
 get_default_node()
@@ -148,7 +149,8 @@ setup_default_grub()
   sed -i '' "s|%%PXEROOT%%|${DNODE}|g" ${DNODE}/boot/grub/grub.cfg
 
   # Create the grub default PXE file
-  grub-mkstandalone -O i386-pc-pxe -o ${PXEROOT}/grub-default.pxe ${DNODE}/boot/grub/grub.cfg
+  grub-mknetdir --net-directory=${PXEROOT} --subdir=default-node
+  cp ${DNODE}/boot/grub/grub.cfg ${PXEROOT}/default-node/grub.cfg
 }
 
 # Start the inital overmind setup 
@@ -195,9 +197,10 @@ do_init()
   read newasso
 
   # Confirm settings
+  echo ""
   echo "Use these settings?"
   echo "ZPOOL: $newpool"
-  echo "DHCP NIC: $newnew"
+  echo "DHCP NIC: $newnic"
   echo "Client NIS: $newnis"
   echo "Client Association: $newasso"
   echo -e "(Y/N):\c"
@@ -208,6 +211,7 @@ do_init()
   esac
  
   # Create $pool/overmind
+  echo ""
   echo "Creating ${newpool}${DSET}"
   if [ ! -d "${DSET}" ] ; then
     rc_halt "mkdir ${DSET}"
