@@ -18,7 +18,8 @@ cd ${DIR}
 
 cp overmind.sh ${LB}/bin/overmind
 chmod 755 ${LB}/bin/overmind
-cp share/overmind-lib.sh ${PROGDIR}/overmind-lib.sh
+
+cp share/* ${PROGDIR}/
 chmod 755 ${PROGDIR}/overmind-lib.sh
 
 exit 0
