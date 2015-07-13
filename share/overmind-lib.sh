@@ -6,6 +6,9 @@
 # Default dataset
 DSET="/overmind"
 
+# The default node dataset
+DNODE="${DSET}/default-node"
+
 # Exit with a error message
 exit_err() {
   echo >&2 "ERROR: $*"
@@ -31,6 +34,12 @@ rc_halt()
 set_prop()
 {
   rc_halt "zfs set overmind:${2}=${3} ${1}"
+}
+
+get_prop()
+{
+  VAL=$(zfs get -H -o value overmind:${2} ${1} 2>/dev/null)
+  export VAL
 }
 
 locate_pool()
@@ -72,6 +81,60 @@ disable_selfasso()
   set_prop "${POOL}${DSET}" "nodeself" "NO"
 }
 
+enable_dhcpd()
+{
+  sysrc -f /etc/rc.conf dhcpd_enable="YES"
+  sysrc -f /etc/rc.conf dhcpd_conf="${PREFIX}/etc/dhcpd.conf"
+  get_prop "${POOL}${DSET}" "pxenic"
+  sysrc -f /etc/rc.conf dhcpd_ifaces="${VAL}"
+
+  # Copy over the dhcp.conf.default
+  cp ${PREFIX}/share/overmind/dhcp.conf.default ${PREFIX}/etc/dhcp.conf
+
+  get_prop "${POOL}${DSET}" "dhcphost"
+  sed -i '' "s|%%DHCPHOST%%|${VAL}|g" ${PREFIX}/etc/dhcp.conf
+  sed -i '' "s|%%PXESERVERIP%%|${VAL}|g" ${PREFIX}/etc/dhcp.conf
+  get_prop "${POOL}${DSET}" "dhcpsubnet"
+  sed -i '' "s|%%DHCPSUBNET%%|${VAL}|g" ${PREFIX}/etc/dhcp.conf
+  get_prop "${POOL}${DSET}" "dhcpnetmask"
+  sed -i '' "s|%%DHCPNETMASK%%|${VAL}|g" ${PREFIX}/etc/dhcp.conf
+  get_prop "${POOL}${DSET}" "dhcpstartrange"
+  sed -i '' "s|%%DHCPSTARTRANGE%%|${VAL}|g" ${PREFIX}/etc/dhcp.conf
+  get_prop "${POOL}${DSET}" "dhcpendrange"
+  sed -i '' "s|%%DHCPENDRANGE%%|${VAL}|g" ${PREFIX}/etc/dhcp.conf
+
+  sed -i '' "s|%%PXEROOT%%|${DNODE}|g" ${PREFIX}/etc/dhcp.conf
+  sed -i '' "s|%%GRUBPXE%%|${DNODE}/boot/grub.pxe|g" ${PREFIX}/etc/dhcp.conf
+}
+
+get_default_node()
+{
+  rc_halt "zfs create -o mountpoint=${DNODE} ${POOL}${DNODE}"
+  echo "Fetching default node files..."
+  # KPM - This needs to be replaced with our fancy GH distribution system eventually
+  fetch -o ${DNODE}/base.txz http://download.pcbsd.org/iso/`uname -r | cut -d '-' -f 2`/amd64/dist/base.txz
+  fetch -o ${DNODE}/kernel.txz http://download.pcbsd.org/iso/`uname -r | cut -d '-' -f 2`/amd64/dist/kernel.txz
+  echo "Extracting default node..."
+  rc_halt "tar xvpf ${DNODE}/base.txz -C ${DNODE}" 2>/dev/null
+  rc_halt "tar xvpf ${DNODE}/kernel.txz -C ${DNODE}" 2>/dev/null
+}
+
+setup_default_grub()
+{
+  echo "Setting up grub.cfg"
+  if [ ! -d "${DNODE}/boot/grub" ] ; then
+    mkdir ${DNODE}/boot/grub
+  fi
+  rc_halt "cp ${PREFIX}/share/grub.cfg.default ${DNODE}/boot/grub/grub.cfg"
+
+  get_prop "${POOL}${DSET}" "dhcphost"
+  sed -i '' "s|%%PXESERVERIP%%|${VAL}|g" ${DNODE}/boot/grub.cfg
+  sed -i '' "s|%%PXEROOT%%|${DNODE}|g" ${DNODE}/boot/grub/grub.cfg
+
+  # Create the grub PXE file
+  grub-mkstandalone -o ${DNODE}/boot/grub.pxe ${DNODE}/boot/grub/grub.cfg
+}
+
 # Start the inital overmind setup 
 do_init()
 {
@@ -94,6 +157,7 @@ do_init()
   # Create $pool/overmind
   echo "Creating ${newpool}${DSET}"
   rc_halt "zfs create ${newpool}${DSET}"
+  rc_halt "mkdir /overmind"
   POOL="${newpool}"
 
   # Ask which device for PXE
@@ -140,6 +204,23 @@ do_init()
 	      disable_selfasso
               ;;
   esac
+
+  # Setup some defaults
+  set_prop "${POOL}${DSET}" "dhcphost" "172.25.10.1"
+  set_prop "${POOL}${DSET}" "dhcpsubnet" "172.25.10.0"
+  set_prop "${POOL}${DSET}" "dhcpnetmask" "255.255.255.0"
+  set_prop "${POOL}${DSET}" "dhcpstartrange" "172.25.10.50"
+  set_prop "${POOL}${DSET}" "dhcpendrange" "172.25.10.250"
+  set_prop "${POOL}${DSET}" "pxeroot" "${POOL}${DNODE}"
+
+  # Fetch the default FreeBSD world / kernel for this default-node
+  get_default_node
+
+  # Setup grub.cfg
+  setup_default_grub
+
+  # Enable DHCPD
+  enable_dhcpd
 
   echo "Initial OverMind setup complete! You may now add node images."
 }
