@@ -158,8 +158,7 @@ setup_default_grub()
 
   # Create the grub default PXE file
   grub-mknetdir --net-directory=${PXEROOT} --subdir=default-node
-  mkdir ${PXEROOT}/default-node/boot
-  cp -r ${DNODE}/boot/kernel ${PXEROOT}/default-node/boot/kernel
+  cp -r ${DNODE}/boot ${PXEROOT}/default-node/boot
   cp ${DNODE}/boot/grub/grub.cfg ${PXEROOT}/default-node/grub.cfg
 }
 
