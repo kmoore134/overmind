@@ -131,8 +131,8 @@ get_default_node()
   echo "Extracting default node..."
   rc_halt "tar xvpf ${DNODE}/base.txz -C ${DNODE}" 2>/dev/null
   rc_halt "tar xvpf ${DNODE}/kernel.txz -C ${DNODE}" 2>/dev/null
-  rc_halt "${DNODE}/base.txz"
-  rc_halt "${DNODE}/kernel.txz"
+  rc_halt "rm ${DNODE}/base.txz"
+  rc_halt "rm ${DNODE}/kernel.txz"
 }
 
 setup_default_grub()
@@ -170,17 +170,6 @@ do_init()
     exit_err "No such zpool: ${newpool}"
   fi
 
-  # Create $pool/overmind
-  echo "Creating ${newpool}${DSET}"
-  if [ ! -d "${DSET}" ] ; then
-    rc_halt "mkdir ${DSET}"
-  fi
-  rc_halt "zfs create -o mountpoint=${DSET} ${newpool}${DSET}"
-  if [ ! -d "${PXEROOT}" ] ; then
-    rc_halt "mkdir ${PXEROOT}"
-  fi
-  POOL="${newpool}"
-
   # Ask which device for PXE
   echo "Which NIC do you want to enable DHCPD/PXE booting on?"
   echo "Available: `ifconfig -l | sed 's|lo0||g'`"
@@ -195,14 +184,44 @@ do_init()
     exit_err "No such NIC: ${newnic}"
   fi
  
-  # Set the default NIC
-  set_prop "${POOL}${DSET}" "pxenic" "${newnic}"
-
   # Ask if enabling NIS
   echo "Do you plan on using NIS for user authentication of nodes?"
   echo -e "(Y/N):\c"
   read newnis
+
+  # Ask if client can associate
+  echo "Allow clients to self-associate with nodes?"
+  echo -e "(Y/N):\c"
+  read newasso
+
+  # Confirm settings
+  echo "Use these settings?"
+  echo "ZPOOL: $newpool"
+  echo "DHCP NIC: $newnew"
+  echo "Client NIS: $newnis"
+  echo "Client Association: $newasso"
+  echo -e "(Y/N):\c"
+  read tmp
+  case $tmp in
+    Y|y|yes) ;;
+          *) exit 1 ;;
+  esac
  
+  # Create $pool/overmind
+  echo "Creating ${newpool}${DSET}"
+  if [ ! -d "${DSET}" ] ; then
+    rc_halt "mkdir ${DSET}"
+  fi
+  rc_halt "zfs create -o mountpoint=${DSET} ${newpool}${DSET}"
+  if [ ! -d "${PXEROOT}" ] ; then
+    rc_halt "mkdir ${PXEROOT}"
+  fi
+  POOL="${newpool}"
+
+  # Set the default NIC
+  set_prop "${POOL}${DSET}" "pxenic" "${newnic}"
+
+  # Set NIS settings
   case ${newnis} in
      Y|y|yes) echo "Enabling NIS" 
 	      enable_nis
@@ -212,11 +231,7 @@ do_init()
               ;;
   esac
 
-  # Ask if client can associate
-  echo "Allow clients to self-associate with nodes?"
-  echo -e "(Y/N):\c"
-  read newasso
- 
+  # Enable association settings
   case ${newasso} in
      Y|y|yes) echo "Enabling self-association" 
 	      enable_selfasso
