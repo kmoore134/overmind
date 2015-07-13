@@ -9,6 +9,9 @@ DSET="/overmind"
 # The default node dataset
 DNODE="${DSET}/default-node"
 
+# Default PXE boot dir
+PXEROOT="${DSET}/pxeboot"
+
 # Exit with a error message
 exit_err() {
   echo >&2 "ERROR: $*"
@@ -92,6 +95,13 @@ enable_dhcpd()
   sysrc -f /etc/rc.conf ifconfig_${NIC}="${VAL}"
   /etc/rc.d/netif start $NIC
 
+  # Make sure tftpd is enabled
+  grep -q "" /etc/inetd.conf
+  if [ $? -ne 0 ] ; then
+    echo "tftp   dgram   udp     wait    root    /usr/libexec/tftpd      tftpd -l -s ${PXEWORLD}" >> /etc/inetd.conf
+  fi
+  service inetd start
+
   # Copy over the dhcp.conf.default
   cp ${PREFIX}/share/overmind/dhcpd.conf.default ${PREFIX}/etc/dhcpd.conf
 
@@ -107,8 +117,8 @@ enable_dhcpd()
   get_prop "${POOL}${DSET}" "dhcpendrange"
   sed -i '' "s|%%DHCPENDRANGE%%|${VAL}|g" ${PREFIX}/etc/dhcpd.conf
 
-  sed -i '' "s|%%PXEROOT%%|${DNODE}|g" ${PREFIX}/etc/dhcpd.conf
-  sed -i '' "s|%%GRUBPXE%%|${DNODE}/boot/grub.pxe|g" ${PREFIX}/etc/dhcpd.conf
+  sed -i '' "s|%%PXEROOT%%|${PXEROOT}|g" ${PREFIX}/etc/dhcpd.conf
+  sed -i '' "s|%%GRUBPXE%%|${PXEROOT}/grub-default.pxe|g" ${PREFIX}/etc/dhcpd.conf
 }
 
 get_default_node()
@@ -121,6 +131,8 @@ get_default_node()
   echo "Extracting default node..."
   rc_halt "tar xvpf ${DNODE}/base.txz -C ${DNODE}" 2>/dev/null
   rc_halt "tar xvpf ${DNODE}/kernel.txz -C ${DNODE}" 2>/dev/null
+  rc_halt "${DNODE}/base.txz"
+  rc_halt "${DNODE}/kernel.txz"
 }
 
 setup_default_grub()
@@ -135,8 +147,8 @@ setup_default_grub()
   sed -i '' "s|%%PXESERVERIP%%|${VAL}|g" ${DNODE}/boot/grub/grub.cfg
   sed -i '' "s|%%PXEROOT%%|${DNODE}|g" ${DNODE}/boot/grub/grub.cfg
 
-  # Create the grub PXE file
-  grub-mkstandalone -O i386-pc-pxe -o ${DNODE}/boot/grub.pxe ${DNODE}/boot/grub/grub.cfg
+  # Create the grub default PXE file
+  grub-mkstandalone -O i386-pc-pxe -o ${PXEROOT}/grub-default.pxe ${DNODE}/boot/grub/grub.cfg
 }
 
 # Start the inital overmind setup 
@@ -161,8 +173,11 @@ do_init()
   # Create $pool/overmind
   echo "Creating ${newpool}${DSET}"
   rc_halt "zfs create ${newpool}${DSET}"
-  if [ ! -d "/overmind" ] ; then
-    rc_halt "mkdir /overmind"
+  if [ ! -d "${DSET}" ] ; then
+    rc_halt "mkdir ${DSET}"
+  fi
+  if [ ! -d "${PXEROOT}" ] ; then
+    rc_halt "mkdir ${PXEROOT}"
   fi
   POOL="${newpool}"
 
