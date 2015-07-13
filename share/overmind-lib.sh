@@ -172,10 +172,10 @@ do_init()
 
   # Create $pool/overmind
   echo "Creating ${newpool}${DSET}"
-  rc_halt "zfs create ${newpool}${DSET}"
   if [ ! -d "${DSET}" ] ; then
     rc_halt "mkdir ${DSET}"
   fi
+  rc_halt "zfs create -o mountpoint=${DSET} ${newpool}${DSET}"
   if [ ! -d "${PXEROOT}" ] ; then
     rc_halt "mkdir ${PXEROOT}"
   fi
