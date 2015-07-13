@@ -87,6 +87,10 @@ enable_dhcpd()
   sysrc -f /etc/rc.conf dhcpd_conf="${PREFIX}/etc/dhcpd.conf"
   get_prop "${POOL}${DSET}" "pxenic"
   sysrc -f /etc/rc.conf dhcpd_ifaces="${VAL}"
+  NIC="$VAL"
+  get_prop "${POOL}${DSET}" "dhcphost"
+  sysrc -f /etc/rc.conf ifconfig_${NIC}="${VAL}"
+  /etc/rc.d/netif start $NIC
 
   # Copy over the dhcp.conf.default
   cp ${PREFIX}/share/overmind/dhcpd.conf.default ${PREFIX}/etc/dhcpd.conf
