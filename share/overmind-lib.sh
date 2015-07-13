@@ -79,9 +79,11 @@ do_init()
   echo "moment to do the following setup."
 
   # Prompt for which zpool
-  newpool="$(zpool list -H -o name | head -n 1)"
-  echo "Which zpool do you want to create /overmind on? [${newpool}]"
+  defaultpool="$(zpool list -H -o name | head -n 1)"
+  echo "Which zpool do you want to create /overmind on?"
+  echo -e "[${defaultpool}]:\c"
   read newpool
+  if [ -z "${newpool}" ] ; then newpool="${defaultpool}" ; fi
 
   # Validate the pool
   zpool list -H ${newpool} >/dev/null 2>/dev/null
@@ -92,14 +94,15 @@ do_init()
   # Create $pool/overmind
   echo "Creating ${newpool}${DSET}"
   rc_halt "zfs create ${newpool}${DSET}"
-  POOL="$newpool"
+  POOL="${newpool}"
 
   # Ask which device for PXE
   echo "Which NIC do you want to enable DHCPD/PXE booting on?"
   echo "Available: `ifconfig -l | sed 's|lo0||g'`"
-  newnic=$(ifconfig -l | sed 's|lo0||g' | head -n 1)
-  echo "NIC [${newnic}]:"
+  defaultnic=$(ifconfig -l | sed 's|lo0||g' | head -n 1)
+  echo -e "NIC [${defaultnic}]:\c"
   read newnic
+  if [ -z "${newnic}" ] ; then newnic="${defaultnic}" ; fi
 
   # Make sure the NIC exists
   ifconfig -l | grep -q "newnic"
@@ -112,7 +115,7 @@ do_init()
 
   # Ask if enabling NIS
   echo "Do you plan on using NIS for user authentication of nodes?"
-  echo "(Y/N)"
+  echo -e "(Y/N):\c"
   read newnis
  
   case ${newnis} in
@@ -126,7 +129,7 @@ do_init()
 
   # Ask if client can associate
   echo "Allow clients to self-associate with nodes?"
-  echo "(Y/N)"
+  echo -e "(Y/N):\c"
   read newasso
  
   case ${newasso} in
