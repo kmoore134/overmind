@@ -112,8 +112,8 @@ get_default_node()
   rc_halt "zfs create -o mountpoint=${DNODE} ${POOL}${DNODE}"
   echo "Fetching default node files..."
   # KPM - This needs to be replaced with our fancy GH distribution system eventually
-  fetch -o ${DNODE}/base.txz http://download.pcbsd.org/iso/`uname -r | cut -d '-' -f 2`/amd64/dist/base.txz
-  fetch -o ${DNODE}/kernel.txz http://download.pcbsd.org/iso/`uname -r | cut -d '-' -f 2`/amd64/dist/kernel.txz
+  fetch -o ${DNODE}/base.txz http://download.pcbsd.org/iso/`uname -r | cut -d '-' -f 1-2`/amd64/dist/base.txz
+  fetch -o ${DNODE}/kernel.txz http://download.pcbsd.org/iso/`uname -r | cut -d '-' -f 1-2`/amd64/dist/kernel.txz
   echo "Extracting default node..."
   rc_halt "tar xvpf ${DNODE}/base.txz -C ${DNODE}" 2>/dev/null
   rc_halt "tar xvpf ${DNODE}/kernel.txz -C ${DNODE}" 2>/dev/null
