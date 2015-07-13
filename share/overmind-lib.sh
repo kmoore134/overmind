@@ -89,22 +89,22 @@ enable_dhcpd()
   sysrc -f /etc/rc.conf dhcpd_ifaces="${VAL}"
 
   # Copy over the dhcp.conf.default
-  cp ${PREFIX}/share/overmind/dhcp.conf.default ${PREFIX}/etc/dhcp.conf
+  cp ${PREFIX}/share/overmind/dhcpd.conf.default ${PREFIX}/etc/dhcpd.conf
 
   get_prop "${POOL}${DSET}" "dhcphost"
-  sed -i '' "s|%%DHCPHOST%%|${VAL}|g" ${PREFIX}/etc/dhcp.conf
-  sed -i '' "s|%%PXESERVERIP%%|${VAL}|g" ${PREFIX}/etc/dhcp.conf
+  sed -i '' "s|%%DHCPHOST%%|${VAL}|g" ${PREFIX}/etc/dhcpd.conf
+  sed -i '' "s|%%PXESERVERIP%%|${VAL}|g" ${PREFIX}/etc/dhcpd.conf
   get_prop "${POOL}${DSET}" "dhcpsubnet"
-  sed -i '' "s|%%DHCPSUBNET%%|${VAL}|g" ${PREFIX}/etc/dhcp.conf
+  sed -i '' "s|%%DHCPSUBNET%%|${VAL}|g" ${PREFIX}/etc/dhcpd.conf
   get_prop "${POOL}${DSET}" "dhcpnetmask"
-  sed -i '' "s|%%DHCPNETMASK%%|${VAL}|g" ${PREFIX}/etc/dhcp.conf
+  sed -i '' "s|%%DHCPNETMASK%%|${VAL}|g" ${PREFIX}/etc/dhcpd.conf
   get_prop "${POOL}${DSET}" "dhcpstartrange"
-  sed -i '' "s|%%DHCPSTARTRANGE%%|${VAL}|g" ${PREFIX}/etc/dhcp.conf
+  sed -i '' "s|%%DHCPSTARTRANGE%%|${VAL}|g" ${PREFIX}/etc/dhcpd.conf
   get_prop "${POOL}${DSET}" "dhcpendrange"
-  sed -i '' "s|%%DHCPENDRANGE%%|${VAL}|g" ${PREFIX}/etc/dhcp.conf
+  sed -i '' "s|%%DHCPENDRANGE%%|${VAL}|g" ${PREFIX}/etc/dhcpd.conf
 
-  sed -i '' "s|%%PXEROOT%%|${DNODE}|g" ${PREFIX}/etc/dhcp.conf
-  sed -i '' "s|%%GRUBPXE%%|${DNODE}/boot/grub.pxe|g" ${PREFIX}/etc/dhcp.conf
+  sed -i '' "s|%%PXEROOT%%|${DNODE}|g" ${PREFIX}/etc/dhcpd.conf
+  sed -i '' "s|%%GRUBPXE%%|${DNODE}/boot/grub.pxe|g" ${PREFIX}/etc/dhcpd.conf
 }
 
 get_default_node()
@@ -128,11 +128,11 @@ setup_default_grub()
   rc_halt "cp ${PREFIX}/share/overmind/grub.cfg.default ${DNODE}/boot/grub/grub.cfg"
 
   get_prop "${POOL}${DSET}" "dhcphost"
-  sed -i '' "s|%%PXESERVERIP%%|${VAL}|g" ${DNODE}/boot/grub.cfg
+  sed -i '' "s|%%PXESERVERIP%%|${VAL}|g" ${DNODE}/boot/grub/grub.cfg
   sed -i '' "s|%%PXEROOT%%|${DNODE}|g" ${DNODE}/boot/grub/grub.cfg
 
   # Create the grub PXE file
-  grub-mkstandalone -o ${DNODE}/boot/grub.pxe ${DNODE}/boot/grub/grub.cfg
+  grub-mkstandalone -O i386-pc-pxe -o ${DNODE}/boot/grub.pxe ${DNODE}/boot/grub/grub.cfg
 }
 
 # Start the inital overmind setup 
