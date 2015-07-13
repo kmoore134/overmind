@@ -99,13 +99,13 @@ do_init()
   # Ask which device for PXE
   echo "Which NIC do you want to enable DHCPD/PXE booting on?"
   echo "Available: `ifconfig -l | sed 's|lo0||g'`"
-  defaultnic=$(ifconfig -l | sed 's|lo0||g' | head -n 1)
+  defaultnic=$(ifconfig -l | sed 's|lo0||g' | awk '{print $1}')
   echo -e "NIC [${defaultnic}]:\c"
   read newnic
   if [ -z "${newnic}" ] ; then newnic="${defaultnic}" ; fi
 
   # Make sure the NIC exists
-  ifconfig -l | grep -q "newnic"
+  ifconfig -l | grep -q "${newnic}"
   if [ $? -ne 0 ] ; then
     exit_err "No such NIC: ${newnic}"
   fi
