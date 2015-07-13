@@ -125,7 +125,7 @@ setup_default_grub()
   if [ ! -d "${DNODE}/boot/grub" ] ; then
     mkdir ${DNODE}/boot/grub
   fi
-  rc_halt "cp ${PREFIX}/share/grub.cfg.default ${DNODE}/boot/grub/grub.cfg"
+  rc_halt "cp ${PREFIX}/share/overmind/grub.cfg.default ${DNODE}/boot/grub/grub.cfg"
 
   get_prop "${POOL}${DSET}" "dhcphost"
   sed -i '' "s|%%PXESERVERIP%%|${VAL}|g" ${DNODE}/boot/grub.cfg
@@ -157,7 +157,9 @@ do_init()
   # Create $pool/overmind
   echo "Creating ${newpool}${DSET}"
   rc_halt "zfs create ${newpool}${DSET}"
-  rc_halt "mkdir /overmind"
+  if [ ! -d "/overmind" ] ; then
+    rc_halt "mkdir /overmind"
+  fi
   POOL="${newpool}"
 
   # Ask which device for PXE
