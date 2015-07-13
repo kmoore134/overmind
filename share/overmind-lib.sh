@@ -50,26 +50,26 @@ locate_pool()
 # Enable NIS configuration
 enable_nis()
 {
-  set_prop "${POOL}${DSET}" "NISSERV" "YES"
+  set_prop "${POOL}${DSET}" "nisserv" "YES"
 }
 
 # Disable NIS configuration
 disable_nis()
 {
-  set_prop "${POOL}${DSET}" "NISSERV" "NO"
+  set_prop "${POOL}${DSET}" "nisserv" "NO"
 }
 
 
 # Enable self association of nodes
 enable_selfasso()
 {
-  set_prop "${POOL}${DSET}" "NODESELF" "YES"
+  set_prop "${POOL}${DSET}" "nodeself" "YES"
 }
 
 # Disable self association of nodes
 disable_selfasso()
 {
-  set_prop "${POOL}${DSET}" "NODESELF" "NO"
+  set_prop "${POOL}${DSET}" "nodeself" "NO"
 }
 
 # Start the inital overmind setup 
@@ -111,7 +111,7 @@ do_init()
   fi
  
   # Set the default NIC
-  set_prop "${POOL}${DSET}" "PXENIC" "${newnic}"
+  set_prop "${POOL}${DSET}" "pxenic" "${newnic}"
 
   # Ask if enabling NIS
   echo "Do you plan on using NIS for user authentication of nodes?"
