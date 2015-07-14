@@ -90,10 +90,6 @@ enable_dhcpd()
   sysrc -f /etc/rc.conf dhcpd_conf="${PREFIX}/etc/dhcpd.conf"
   get_prop "${POOL}${DSET}" "pxenic"
   sysrc -f /etc/rc.conf dhcpd_ifaces="${VAL}"
-  NIC="$VAL"
-  get_prop "${POOL}${DSET}" "dhcphost"
-  sysrc -f /etc/rc.conf ifconfig_${NIC}="${VAL}"
-  /etc/rc.d/netif start $NIC
 
   # Make sure tftpd is enabled
   grep -q "${PXEWORLD}" /etc/inetd.conf
@@ -144,7 +140,7 @@ get_default_node()
   DHCPSUBNET="$VAL"
   get_prop "${POOL}${DSET}" "dhcpnetmask"
   DHCPNETMASK="$VAL"
-  zfs set sharenfs="-maproot=nobody -ro -network ${DHCPSUBNET} -mask ${NETMASK}" ${POOL}${DNODE}
+  zfs set sharenfs="-maproot=nobody -ro -network ${DHCPSUBNET} -mask ${DHCPNETMASK}" ${POOL}${DNODE}
   if [ $? -ne 0 ] ; then
      exit_err "Failed setting sharenfs on ${POOL}${DNODE}"
   fi
@@ -289,6 +285,13 @@ do_init()
   set_prop "${POOL}${DSET}" "dhcpstartrange" "192.168.10.50"
   set_prop "${POOL}${DSET}" "dhcpendrange" "192.168.10.250"
   set_prop "${POOL}${DSET}" "pxeroot" "${POOL}${DNODE}"
+
+  # Set the NIC address
+  get_prop "${POOL}${DSET}" "pxenic"
+  NIC="$VAL"
+  get_prop "${POOL}${DSET}" "dhcphost"
+  sysrc -f /etc/rc.conf ifconfig_${NIC}="${VAL}"
+  /etc/rc.d/netif start $NIC
 
   # Enable NFSD
   enable_nfsd
