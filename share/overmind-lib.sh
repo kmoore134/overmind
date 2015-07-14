@@ -253,18 +253,12 @@ do_init()
   echo -e "(Y/N):\c"
   read newnis
 
-  # Ask if client can associate
-  echo "Allow clients to self-associate with nodes?"
-  echo -e "(Y/N):\c"
-  read newasso
-
   # Confirm settings
   echo ""
   echo "Use these settings?"
   echo "ZPOOL: $newpool"
   echo "DHCP NIC: $newnic"
   echo "Client NIS: $newnis"
-  echo "Client Association: $newasso"
   echo -e "(Y/N):\c"
   read tmp
   case $tmp in
