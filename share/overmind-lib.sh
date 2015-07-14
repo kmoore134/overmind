@@ -154,10 +154,11 @@ create_mfsroot()
   _mfsdir="/tmp/.mfs-${_node}"
   mkdir ${_mfsdir}
   echo "Creating MFSROOT for ${_node}"
-  tar cvf - -C ${DSET}/${_node} ./etc ./libexec ./rescue ./sbin ./bin ./lib ./usr/bin/grep 2>/dev/null | tar xvf - -C ${_mfsdir} 2>/dev/null
+  tar cvf - -C ${DSET}/${_node} ./etc ./libexec ./rescue ./sbin ./bin ./lib ./var ./usr/bin/grep 2>/dev/null | tar xvf - -C ${_mfsdir} 2>/dev/null
   mkdir ${_mfsdir}/dev
   mkdir ${_mfsdir}/root
   mkdir ${_mfsdir}/proc
+  mkdir ${_mfsdir}/tmp
   mkdir ${_mfsdir}/usr/lib
   cp ${DSET}/${_node}/usr/lib/libbz* ${_mfsdir}/usr/lib/
   cp ${DSET}/${_node}/usr/lib/libgnureg* ${_mfsdir}/usr/lib/
