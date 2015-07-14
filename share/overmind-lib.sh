@@ -157,6 +157,8 @@ setup_default_grub()
   get_prop "${POOL}${DSET}" "dhcphost"
   sed -i '' "s|%%PXESERVERIP%%|${VAL}|g" ${DNODE}/boot/grub/grub.cfg
   sed -i '' "s|%%PXEROOT%%|${DNODE}|g" ${DNODE}/boot/grub/grub.cfg
+  get_prop "${POOL}${DSET}" "dhcpsubnet"
+  sed -i '' "s|%%PXESERVERSUBNET%%|${VAL}|g" ${DNODE}/boot/grub/grub.cfg
 
   if [ -d "${PXEROOT}/default-node" ] ; then
     rm -rf ${PXEROOT}/default-node
