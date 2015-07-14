@@ -1,0 +1,39 @@
+#!/bin/sh
+
+PATH="/bin:/sbin:/usr/bin:/usr/sbin:/rescue"
+export PATH
+
+# Remount RW the mfsroot
+mount -o rw /dev/md0 /
+
+# Get the passed variables
+HW=`kenv boot.netif.hwaddr`
+NFSSERVER=`kenv boot.nfsroot.server`
+
+found=0
+for i in `ifconfig -l`
+do
+  ifconfig $i | grep -q "$HW"
+  if [ $? -eq 0 ] ; then
+     # dhclient again <sigh>
+     dhclient $i
+     found=1
+     break
+  fi
+done
+
+if [ $found -eq 0 ] ; then
+  echo "Failed locating network interface!"
+  read tmp
+  shutdown -p now
+fi
+
+/rescue/mount_nfs ${NFSSERVER}:/overmind/default-node /
+if [ $? -ne 0 ] ; then
+  echo "Failed mounting NFS ROOT!"
+  read tmp
+  shutdown -p now
+fi
+
+/rescue/mount -t devfs devfs /dev
+sh /etc/rc

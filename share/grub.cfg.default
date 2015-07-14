@@ -14,12 +14,10 @@ menuentry 'OverMind Default PXE Boot' --class os {
   kfreebsd_loadenv (tftp)/default-node/boot/device.hints
   kfreebsd_module_elf (tftp)/default-node/boot/kernel/tmpfs.ko
   kfreebsd_module_elf (tftp)/default-node/boot/kernel/crypto.ko
-  set kFreeBSD.vfs.root.mountfrom=%%PXESERVERIP%%:%%PXEROOT%%
-  set kFreeBSD.boot.nfsroot.server=%%PXESERVERIP%%
+  echo 'Loading mfsroot.gz:'
+  kfreebsd_module (tftp)/default-node/boot/mfsroot.gz type=mfs_root
+  set kFreeBSD.boot.nfsroot.server=$pxe_default_server
   set kFreeBSD.boot.netif.hwaddr=$net_pxe_mac
   set kFreeBSD.boot.netif.ip=$net_pxe_ip
-  set kFreeBSD.boot.netif.netmask=%%PXESERVERSUBNET%%
-  set kFreeBSD.boot.netif.gateway=$system_gateway
   set kFreeBSD.dhcp.host-name=$net_pxe_hostname
-  set kFreeBSD.dhcp.routers=%%PXESERVERIP%%
 }

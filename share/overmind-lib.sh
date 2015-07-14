@@ -140,10 +140,32 @@ get_default_node()
   DHCPSUBNET="$VAL"
   get_prop "${POOL}${DSET}" "dhcpnetmask"
   DHCPNETMASK="$VAL"
-  zfs set sharenfs="-maproot=nobody -ro -network ${DHCPSUBNET} -mask ${DHCPNETMASK}" ${POOL}${DNODE}
+  zfs set sharenfs="-maproot=root -network ${DHCPSUBNET} -mask ${DHCPNETMASK}" ${POOL}${DNODE}
   if [ $? -ne 0 ] ; then
      exit_err "Failed setting sharenfs on ${POOL}${DNODE}"
   fi
+
+  create_mfsroot "`basename ${DNODE}`"
+}
+
+create_mfsroot()
+{
+  # Create the MFS root image for a FreeBSD Node
+  _node="$1"
+  mkdir /tmp/.mfs-${_node}
+  echo "Creating MFSROOT for ${_node}"
+  tar cvf - -C ${DSET}/${_node} ./etc ./libexec ./rescue ./sbin ./bin ./lib 2>/dev/null | tar xvf - -C /tmp/.mfs-${node} 2>/dev/null
+  mkdir /tmp/.mfs-${_node}/dev
+  mkdir /tmp/.mfs-${_node}/root
+  mkdir /tmp/.mfs-${_node}/usr/bin
+  mkdir /tmp/.mfs-${_node}/usr/lib
+  mkdir /tmp/.mfs-${_node}/usr/sbin
+  mkdir /tmp/.mfs-${_node}/usr/proc
+  cp ${PREFIX}/share/overmind/mfsroot-rc /tmp/.mfs-${_node}/etc/rc
+  makefs ${DSET}/pxeboot/${_node}/boot/mfsroot /tmp/.mfs-${_node}
+  rm ${DSET}/pxeboot/${_node}/boot/mfsroot.gz
+  gzip ${DSET}/pxeboot/${_node}/boot/mfsroot
+  rm -rf /tmp/.mfs-${_node}
 }
 
 setup_default_grub()
@@ -157,8 +179,8 @@ setup_default_grub()
   get_prop "${POOL}${DSET}" "dhcphost"
   sed -i '' "s|%%PXESERVERIP%%|${VAL}|g" ${DNODE}/boot/grub/grub.cfg
   sed -i '' "s|%%PXEROOT%%|${DNODE}|g" ${DNODE}/boot/grub/grub.cfg
-  get_prop "${POOL}${DSET}" "dhcpsubnet"
-  sed -i '' "s|%%PXESERVERSUBNET%%|${VAL}|g" ${DNODE}/boot/grub/grub.cfg
+  get_prop "${POOL}${DSET}" "dhcpnetmask"
+  sed -i '' "s|%%PXESERVERNETMASK%%|${VAL}|g" ${DNODE}/boot/grub/grub.cfg
 
   if [ -d "${PXEROOT}/default-node" ] ; then
     rm -rf ${PXEROOT}/default-node
@@ -300,6 +322,7 @@ do_init()
 
   # Fetch the default FreeBSD world / kernel for this default-node
   get_default_node
+  create_default_mfsroot
 
   # Setup grub.cfg
   setup_default_grub
