@@ -154,10 +154,13 @@ create_mfsroot()
   _mfsdir="/tmp/.mfs-${_node}"
   mkdir ${_mfsdir}
   echo "Creating MFSROOT for ${_node}"
-  tar cvf - -C ${DSET}/${_node} ./etc ./libexec ./rescue ./sbin ./bin ./lib ./usr/bin/grep ./usr/lib/libbz* ./usr/lib/libgnureg* 2>/dev/null | tar xvf - -C ${_mfsdir} 2>/dev/null
+  tar cvf - -C ${DSET}/${_node} ./etc ./libexec ./rescue ./sbin ./bin ./lib ./usr/bin/grep 2>/dev/null | tar xvf - -C ${_mfsdir} 2>/dev/null
   mkdir ${_mfsdir}/dev
   mkdir ${_mfsdir}/root
   mkdir ${_mfsdir}/proc
+  mkdir ${_mfsdir}/usr/lib
+  cp ${DSET}/${_node}/usr/lib/libbz* ${_mfsdir}/usr/lib/
+  cp ${DSET}/${_node}/usr/lib/libgnureg* ${_mfsdir}/usr/lib/
   cp ${PREFIX}/share/overmind/mfsroot-rc ${_mfsdir}/etc/rc
   makefs ${DSET}/pxeboot/${_node}/boot/mfsroot ${_mfsdir}
   rm ${DSET}/pxeboot/${_node}/boot/mfsroot.gz 2>/dev/null
