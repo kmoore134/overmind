@@ -182,6 +182,9 @@ enable_nfsd()
   sysrc -f /etc/rc.conf rpc_lockd_enable="YES"
   sysrc -f /etc/rc.conf rpc_statd_enable="YES"
 
+  # Make mountd happy
+  touch /etc/exports
+
   # Start NFS
   service nfsd stop 2>/dev/null >/dev/null
   service nfsd start
@@ -280,11 +283,11 @@ do_init()
   esac
 
   # Setup some defaults
-  set_prop "${POOL}${DSET}" "dhcphost" "172.25.10.1"
-  set_prop "${POOL}${DSET}" "dhcpsubnet" "172.25.10.0"
+  set_prop "${POOL}${DSET}" "dhcphost" "192.168.10.1"
+  set_prop "${POOL}${DSET}" "dhcpsubnet" "192.168.10.0"
   set_prop "${POOL}${DSET}" "dhcpnetmask" "255.255.255.0"
-  set_prop "${POOL}${DSET}" "dhcpstartrange" "172.25.10.50"
-  set_prop "${POOL}${DSET}" "dhcpendrange" "172.25.10.250"
+  set_prop "${POOL}${DSET}" "dhcpstartrange" "192.168.10.50"
+  set_prop "${POOL}${DSET}" "dhcpendrange" "192.168.10.250"
   set_prop "${POOL}${DSET}" "pxeroot" "${POOL}${DNODE}"
 
   # Enable NFSD
