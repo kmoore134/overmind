@@ -138,6 +138,16 @@ get_default_node()
   rc_halt "tar xvpf ${DNODE}/kernel.txz -C ${DNODE}" 2>/dev/null
   rc_halt "rm ${DNODE}/base.txz"
   rc_halt "rm ${DNODE}/kernel.txz"
+
+  # Setup sharing for this node
+  get_prop "${POOL}${DSET}" "dhcpsubnet"
+  DHCPSUBNET="$VAL"
+  get_prop "${POOL}${DSET}" "dhcpnetmask"
+  DHCPNETMASK="$VAL"
+  zfs set sharenfs="-maproot=nobody -ro -network ${DHCPSUBNET} -mask ${NETMASK}" ${POOL}${DNODE}
+  if [ $? -ne 0 ] ; then
+     exit_err "Failed setting sharenfs on ${POOL}${DNODE}"
+  fi
 }
 
 setup_default_grub()
@@ -160,6 +170,21 @@ setup_default_grub()
   grub-mknetdir --net-directory=${PXEROOT} --subdir=default-node
   cp -r ${DNODE}/boot ${PXEROOT}/default-node/boot
   cp ${DNODE}/boot/grub/grub.cfg ${PXEROOT}/default-node/grub.cfg
+}
+
+enable_nfsd()
+{
+  # Enable the services
+  sysrc -f /etc/rc.conf rpcbind_enable="YES"
+  sysrc -f /etc/rc.conf nfs_server_enable="YES"
+  sysrc -f /etc/rc.conf mountd_enable="YES"
+  sysrc -f /etc/rc.conf mountd_flags="-r"
+  sysrc -f /etc/rc.conf rpc_lockd_enable="YES"
+  sysrc -f /etc/rc.conf rpc_statd_enable="YES"
+
+  # Start NFS
+  service nfsd stop 2>/dev/null >/dev/null
+  service nfsd start
 }
 
 # Start the inital overmind setup 
@@ -261,6 +286,9 @@ do_init()
   set_prop "${POOL}${DSET}" "dhcpstartrange" "172.25.10.50"
   set_prop "${POOL}${DSET}" "dhcpendrange" "172.25.10.250"
   set_prop "${POOL}${DSET}" "pxeroot" "${POOL}${DNODE}"
+
+  # Enable NFSD
+  enable_nfsd
 
   # Fetch the default FreeBSD world / kernel for this default-node
   get_default_node
