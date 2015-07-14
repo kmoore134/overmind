@@ -145,36 +145,35 @@ get_default_node()
      exit_err "Failed setting sharenfs on ${POOL}${DNODE}"
   fi
 
-  create_mfsroot "`basename ${DNODE}`"
 }
 
 create_mfsroot()
 {
   # Create the MFS root image for a FreeBSD Node
   _node="$1"
-  mkdir /tmp/.mfs-${_node}
+  _mfsdir="/tmp/.mfs-${_node}"
+  mkdir ${_mfsdir}
   echo "Creating MFSROOT for ${_node}"
-  tar cvf - -C ${DSET}/${_node} ./etc ./libexec ./rescue ./sbin ./bin ./lib 2>/dev/null | tar xvf - -C /tmp/.mfs-${node} 2>/dev/null
-  mkdir /tmp/.mfs-${_node}/dev
-  mkdir /tmp/.mfs-${_node}/root
-  mkdir /tmp/.mfs-${_node}/usr/bin
-  mkdir /tmp/.mfs-${_node}/usr/lib
-  mkdir /tmp/.mfs-${_node}/usr/sbin
-  mkdir /tmp/.mfs-${_node}/usr/proc
-  cp ${PREFIX}/share/overmind/mfsroot-rc /tmp/.mfs-${_node}/etc/rc
-  makefs ${DSET}/pxeboot/${_node}/boot/mfsroot /tmp/.mfs-${_node}
-  rm ${DSET}/pxeboot/${_node}/boot/mfsroot.gz
+  tar cvf - -C ${DSET}/${_node} ./etc ./libexec ./rescue ./sbin ./bin ./lib ./usr/bin/grep ./usr/lib/libbz* ./usr/lib/libgnureg* 2>/dev/null | tar xvf - -C ${_mfsdir} 2>/dev/null
+  mkdir ${_mfsdir}/dev
+  mkdir ${_mfsdir}/root
+  mkdir ${_mfsdir}/proc
+  cp ${PREFIX}/share/overmind/mfsroot-rc ${_mfsdir}/etc/rc
+  makefs ${DSET}/pxeboot/${_node}/boot/mfsroot ${_mfsdir}
+  rm ${DSET}/pxeboot/${_node}/boot/mfsroot.gz 2>/dev/null
   gzip ${DSET}/pxeboot/${_node}/boot/mfsroot
-  rm -rf /tmp/.mfs-${_node}
+  rm -rf ${_mfsdir}
 }
 
-setup_default_grub()
+setup_node_grub()
 {
+  _node="$1"
+
   echo "Setting up grub.cfg"
-  if [ ! -d "${DNODE}/boot/grub" ] ; then
-    mkdir ${DNODE}/boot/grub
+  if [ ! -d "${DSET}/${_node}/boot/grub" ] ; then
+    mkdir ${DSET}/${_node}/boot/grub
   fi
-  rc_halt "cp ${PREFIX}/share/overmind/grub.cfg.default ${DNODE}/boot/grub/grub.cfg"
+  rc_halt "cp ${PREFIX}/share/overmind/grub.cfg.default ${DSET}/${_node}/boot/grub/grub.cfg"
 
   get_prop "${POOL}${DSET}" "dhcphost"
   sed -i '' "s|%%PXESERVERIP%%|${VAL}|g" ${DNODE}/boot/grub/grub.cfg
@@ -182,14 +181,16 @@ setup_default_grub()
   get_prop "${POOL}${DSET}" "dhcpnetmask"
   sed -i '' "s|%%PXESERVERNETMASK%%|${VAL}|g" ${DNODE}/boot/grub/grub.cfg
 
-  if [ -d "${PXEROOT}/default-node" ] ; then
-    rm -rf ${PXEROOT}/default-node
+  if [ -d "${PXEROOT}/${_node}" ] ; then
+    rm -rf ${PXEROOT}/${_node}
   fi
 
   # Create the grub default PXE file
-  grub-mknetdir --net-directory=${PXEROOT} --subdir=default-node
-  cp -r ${DNODE}/boot ${PXEROOT}/default-node/boot
-  cp ${DNODE}/boot/grub/grub.cfg ${PXEROOT}/default-node/grub.cfg
+  grub-mknetdir --net-directory=${PXEROOT} --subdir=${_node}
+  cp -r ${DSET}/${_node}/boot ${PXEROOT}/${_node}/boot
+  cp ${DSET}/${_node}/boot/grub/grub.cfg ${PXEROOT}/${_node}/grub.cfg
+
+  create_mfsroot "$_node"
 }
 
 enable_nfsd()
@@ -322,10 +323,9 @@ do_init()
 
   # Fetch the default FreeBSD world / kernel for this default-node
   get_default_node
-  create_default_mfsroot
 
   # Setup grub.cfg
-  setup_default_grub
+  setup_node_grub "`basename ${DNODE}`"
 
   # Enable DHCPD
   enable_dhcpd
