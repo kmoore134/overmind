@@ -6,8 +6,8 @@
 # Default dataset
 DSET="/overmind"
 
-# The default node dataset
-DNODE="${DSET}/default-node"
+# The default node location
+NODEDIR="${DSET}/nodes"
 
 # Default PXE boot dir
 PXEROOT="${DSET}/pxeboot"
@@ -122,68 +122,133 @@ enable_dhcpd()
   service isc-dhcpd start
 }
 
-get_default_node()
+get_uuid_from_node_nick()
 {
-  rc_halt "zfs create -o mountpoint=${DNODE} ${POOL}${DNODE}"
-  echo "Fetching default node files..."
-  # KPM - This needs to be replaced with our fancy GH distribution system eventually
-  fetch -o ${DNODE}/base.txz http://download.pcbsd.org/iso/`uname -r | cut -d '-' -f 1-2`/amd64/dist/base.txz
-  fetch -o ${DNODE}/kernel.txz http://download.pcbsd.org/iso/`uname -r | cut -d '-' -f 1-2`/amd64/dist/kernel.txz
-  echo "Extracting default node..."
-  rc_halt "tar xvpf ${DNODE}/base.txz -C ${DNODE}" 2>/dev/null
-  rc_halt "tar xvpf ${DNODE}/kernel.txz -C ${DNODE}" 2>/dev/null
-  rc_halt "rm ${DNODE}/base.txz"
-  rc_halt "rm ${DNODE}/kernel.txz"
+
+}
+
+# Fetch a fresh node from FreeBSD dist files
+fetch_freebsd_node()
+{
+  # Check if node exists
+  if [ -n "$om_node" ] ; then
+    get_uuid_from_node_nick
+    if [ -n "$UUID" ] ; then
+      exit_err "A node with the nickname $om_node already exists"
+    fi
+  fi
+
+
+  if [ -z "${om_arch}" ] ; then
+    om_arch=`uname -m`
+  fi
+
+  # Get a new uuid
+  nuuid=`uuidgen`
+
+  # Create new dataset
+  NDSET="${NODEDIR}/${nuuid}"
+
+  # Unlikely, but just in case
+  if [ -d "$NDSET" ] ; then
+    exit_err "The node $NDSET already exists!"
+  fi
+
+  rc_halt "zfs create -o mountpoint=${NDSET} ${POOL}${NDSET}"
+
+  echo "Fetching FreeBSD dist files..."
+  DIST="base kernel doc"
+  if [ "$om_arch" = "amd64" ] ; then
+    DIST="${DIST} lib32"
+  fi
+
+  if [ -z "${om_url}" ] ; then
+    dlurl="http://ftp.freebsd.org/pub/FreeBSD/releases/${om_arch}/${om_arch}/${om_release}/"
+  else
+    dlurl="${om_url}"
+  fi
+
+  for i in $DIST
+  do
+    fetch -o ${NDSET}/${i}.txz ${dlurl}/${i}.txz
+    if [ $? -ne 0 ] ; then
+      zfs destroy ${POOL}${NDSET}
+      exit_err "Failed fetching ${dlurl}/${i}.txz"
+    fi
+  done
+
+  echo "Extracting node..."
+  for i in $DIST
+  do
+    tar xvpf ${NDSET}/${i}.txz -C ${NDSET} 2>/dev/null
+    if [ $? -ne 0 ] ; then
+      zfs destroy ${POOL}${NDSET}
+      exit_err "Failed extracting ${dlurl}/${i}.txz"
+    fi
+    rc_halt "rm ${NDSET}/${i}.txz"
+  done
+
+  # Make sure /etc/fstab is created in the node
+  touch ${NDSET}/etc/fstab
 
   # Setup sharing for this node
   get_prop "${POOL}${DSET}" "dhcpsubnet"
   DHCPSUBNET="$VAL"
   get_prop "${POOL}${DSET}" "dhcpnetmask"
   DHCPNETMASK="$VAL"
-  zfs set sharenfs="-maproot=root -network ${DHCPSUBNET} -mask ${DHCPNETMASK}" ${POOL}${DNODE}
+  zfs set sharenfs="-maproot=root -network ${DHCPSUBNET} -mask ${DHCPNETMASK}" ${POOL}${NDSET}
   if [ $? -ne 0 ] ; then
-     exit_err "Failed setting sharenfs on ${POOL}${DNODE}"
+     exit_err "Failed setting sharenfs on ${POOL}${NDSET}"
   fi
 
+  setup_freebsd_grub "${nuuid}"
+
+  # Restart dhcpd
+  enable_dhcpd
 }
 
-create_mfsroot()
+create_freebsd_mfsroot()
 {
   # Create the MFS root image for a FreeBSD Node
   _node="$1"
+  NDSET="${NODEDIR}/${_node}"
+
   _mfsdir="/tmp/.mfs-${_node}"
   mkdir ${_mfsdir}
   echo "Creating MFSROOT for ${_node}"
-  tar cvf - -C ${DSET}/${_node} ./etc ./libexec ./rescue ./sbin ./bin ./lib ./var ./usr/bin/grep 2>/dev/null | tar xvf - -C ${_mfsdir} 2>/dev/null
+  tar cvf - -C ${NDSET} ./etc ./libexec ./rescue ./sbin ./bin ./lib ./var ./usr/bin/grep 2>/dev/null | tar xvf - -C ${_mfsdir} 2>/dev/null
   mkdir ${_mfsdir}/dev
   mkdir ${_mfsdir}/root
   mkdir ${_mfsdir}/proc
   mkdir ${_mfsdir}/tmp
   mkdir ${_mfsdir}/usr/lib
-  cp ${DSET}/${_node}/usr/lib/libbz* ${_mfsdir}/usr/lib/
-  cp ${DSET}/${_node}/usr/lib/libgnureg* ${_mfsdir}/usr/lib/
+  cp ${NDSET}/usr/lib/libbz* ${_mfsdir}/usr/lib/
+  cp ${NDSET}/usr/lib/libgnureg* ${_mfsdir}/usr/lib/
   cp ${PREFIX}/share/overmind/mfsroot-rc ${_mfsdir}/etc/rc
   makefs ${DSET}/pxeboot/${_node}/boot/mfsroot ${_mfsdir}
   rm ${DSET}/pxeboot/${_node}/boot/mfsroot.gz 2>/dev/null
   gzip ${DSET}/pxeboot/${_node}/boot/mfsroot
-  rm -rf ${_mfsdir}
+  rm -rf ${_mfsdir} 2>/dev/null
+  chflags -R noschg ${_mfsdir} 2>/dev/null
+  rm -rf ${_mfsdir} 2>/dev/null
 }
 
-setup_node_grub()
+setup_freebsd_grub()
 {
   _node="$1"
+  NDSET="${NODEDIR}/${_node}"
 
   echo "Setting up grub.cfg"
-  if [ ! -d "${DSET}/${_node}/boot/grub" ] ; then
-    mkdir ${DSET}/${_node}/boot/grub
+  if [ ! -d "${NDSET}/boot/grub" ] ; then
+    mkdir ${NDSET}/boot/grub
   fi
-  rc_halt "cp ${PREFIX}/share/overmind/grub.cfg.default ${DSET}/${_node}/boot/grub/grub.cfg"
+  rc_halt "cp ${PREFIX}/share/overmind/grub.cfg.default ${NDSET}/boot/grub/grub.cfg"
 
   get_prop "${POOL}${DSET}" "dhcphost"
-  sed -i '' "s|%%PXESERVERIP%%|${VAL}|g" ${DNODE}/boot/grub/grub.cfg
-  sed -i '' "s|%%PXEROOT%%|${DNODE}|g" ${DNODE}/boot/grub/grub.cfg
+  sed -i '' "s|%%PXESERVERIP%%|${VAL}|g" ${NDSET}/boot/grub/grub.cfg
+  sed -i '' "s|%%PXEROOT%%|${DNODE}|g" ${NDSET}/boot/grub/grub.cfg
   get_prop "${POOL}${DSET}" "dhcpnetmask"
-  sed -i '' "s|%%PXESERVERNETMASK%%|${VAL}|g" ${DNODE}/boot/grub/grub.cfg
+  sed -i '' "s|%%PXESERVERNETMASK%%|${VAL}|g" ${NDSET}/boot/grub/grub.cfg
 
   if [ -d "${PXEROOT}/${_node}" ] ; then
     rm -rf ${PXEROOT}/${_node}
@@ -191,10 +256,10 @@ setup_node_grub()
 
   # Create the grub default PXE file
   grub-mknetdir --net-directory=${PXEROOT} --subdir=${_node}
-  cp -r ${DSET}/${_node}/boot ${PXEROOT}/${_node}/boot
-  cp ${DSET}/${_node}/boot/grub/grub.cfg ${PXEROOT}/${_node}/grub.cfg
+  cp -r ${NDSET}/boot ${PXEROOT}/${_node}/boot
+  cp ${NDSET}/boot/grub/grub.cfg ${PXEROOT}/${_node}/grub.cfg
 
-  create_mfsroot "$_node"
+  create_freebsd_mfsroot "$_node"
 }
 
 enable_nfsd()
@@ -273,9 +338,19 @@ do_init()
     rc_halt "mkdir ${DSET}"
   fi
   rc_halt "zfs create -o mountpoint=${DSET} ${newpool}${DSET}"
+
+  # Create the PXEROOT
   if [ ! -d "${PXEROOT}" ] ; then
     rc_halt "mkdir ${PXEROOT}"
   fi
+  rc_halt "zfs create -o mountpoint=${PXEROOT} ${newpool}${PXEROOT}"
+
+  # Create the NODEDIR
+  if [ ! -d "${NODEDIR}" ] ; then
+    rc_halt "mkdir ${NODEDIR}"
+  fi
+  rc_halt "zfs create -o mountpoint=${NODEDIR} ${newpool}${NODEDIR}"
+
   POOL="${newpool}"
 
   # Set the default NIC
@@ -288,16 +363,6 @@ do_init()
               ;;
     N|n|no|*) echo "Disabling NIS" 
 	      disable_nis
-              ;;
-  esac
-
-  # Enable association settings
-  case ${newasso} in
-     Y|y|yes) echo "Enabling self-association" 
-	      enable_selfasso
-              ;;
-    N|n|no|*) echo "Disabling self-association" 
-	      disable_selfasso
               ;;
   esac
 
@@ -319,14 +384,8 @@ do_init()
   # Enable NFSD
   enable_nfsd
 
-  # Fetch the default FreeBSD world / kernel for this default-node
-  get_default_node
-
-  # Setup grub.cfg
-  setup_node_grub "`basename ${DNODE}`"
-
   # Enable DHCPD
   enable_dhcpd
 
-  echo "Initial OverMind setup complete! You may now add node images."
+  echo "Initial OverMind setup complete! You may now add node images via 'overmind {fetch|pull}'."
 }
