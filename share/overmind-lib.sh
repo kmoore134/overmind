@@ -341,7 +341,7 @@ fetch_freebsd_node()
 
   # Set the mac property if specified
   if [ -n "${om_mac}" ] ; then
-    assign_mac "${om_node}" "${om_mac}"
+    assign_mac "${nuuid}" "${om_mac}"
   fi
 
   # Set the os type
