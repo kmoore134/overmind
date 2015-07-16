@@ -394,6 +394,11 @@ create_freebsd_mfsroot()
   cp ${NDSET}/usr/lib/libbz* ${_mfsdir}/usr/lib/
   cp ${NDSET}/usr/lib/libgnureg* ${_mfsdir}/usr/lib/
   cp ${PREFIX}/share/overmind/mfsroot-rc ${_mfsdir}/etc/rc
+
+  # Massage /etc/rc
+  sed -i '' "s|%%STATICIP%%||g" ${_mfsdiir}/etc/rc
+  sed -i '' "s|%%NODE%%|${_node}|g" ${_mfsdiir}/etc/rc
+
   makefs ${DSET}/pxeboot/${_node}/boot/mfsroot ${_mfsdir}
   rm ${DSET}/pxeboot/${_node}/boot/mfsroot.gz 2>/dev/null
   gzip ${DSET}/pxeboot/${_node}/boot/mfsroot

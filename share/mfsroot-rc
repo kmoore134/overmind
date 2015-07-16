@@ -10,6 +10,9 @@ mount -o rw /dev/md0 /
 HW=`kenv boot.netif.hwaddr`
 NFSSERVER=`kenv boot.nfsroot.server`
 
+# Set a possible STATICIP
+STATICIP="%%STATICIP%%"
+
 found=0
 for i in `ifconfig -l`
 do
@@ -28,7 +31,7 @@ if [ $found -eq 0 ] ; then
   shutdown -p now
 fi
 
-/rescue/mount_nfs ${NFSSERVER}:/overmind/default-node /
+/rescue/mount_nfs ${NFSSERVER}:/overmind/%%NODE%% /
 if [ $? -ne 0 ] ; then
   echo "Failed mounting NFS ROOT!"
   read tmp
