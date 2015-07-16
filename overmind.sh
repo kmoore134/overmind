@@ -77,7 +77,7 @@ parse_help()
   case $1 in
   fetch) usage_fetch ;;
    pull) usage_pull ;;
-   list) list_nodes ;;
+   list) usage_list ;;
       *) echo "Unknown command: $1"
          exit 1
          ;;
@@ -111,6 +111,7 @@ export_props $@
 case $1 in
            fetch) parse_fetch ;;
             help) parse_help $2 ;;
+            list) list_nodes ;;
             pull) parse_pull ;;
    restart_dhcpd) enable_dhcpd ;;
                *) usage ;;
