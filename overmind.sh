@@ -77,6 +77,7 @@ parse_help()
   case $1 in
   fetch) usage_fetch ;;
    pull) usage_pull ;;
+   list) list_nodes ;;
       *) echo "Unknown command: $1"
          exit 1
          ;;

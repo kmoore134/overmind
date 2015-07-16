@@ -86,6 +86,25 @@ disable_selfasso()
   set_prop "${POOL}${DSET}" "nodeself" "NO"
 }
 
+list_nodes()
+{
+  echo "Overmind Nodes:"
+  echo "-------------------------------------------------------------"
+
+  # Look through the nodes, return the UUID of a specified nick
+  for i in `zfs list -H -d 1 ${POOL}${NODEDIR} | awk '{print $1}'`
+  do
+    _nick="-"
+    _nuuid=$(basename $i)
+    get_prop "${i}" "nodename"
+    if [ -n "${VAL}" -a "${VAL}" != "none" ] ; then
+      _nick="${VAL}"
+    fi
+    echo "${_nuuid}		${_nick}"
+  done
+  exit 0
+}
+ 
 enable_dhcpd()
 {
   sysrc -f /etc/rc.conf dhcpd_enable="YES"
@@ -123,7 +142,7 @@ enable_dhcpd()
   USEDIP=""
 
   # Start the auto-assigned IPs at XXX.XXX.XXX.50
-  AUTOIP="50"
+  AUTOIP="25"
 
   # Go and create entries for each node
   for i in `zfs list -H -d 1 ${POOL}${NODEDIR} | awk '{print $1}'`
