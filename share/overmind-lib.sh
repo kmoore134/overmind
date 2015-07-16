@@ -92,12 +92,12 @@ list_nodes()
   echo "-------------------------------------------------------------"
 
   # Look through the nodes, return the UUID of a specified nick
-  for i in `zfs list -H -d 1 ${POOL}${NODEDIR} | awk '{print $1}'`
+  for i in `zfs list -H -d 1 ${POOL}${NODEDIR} | awk '{print $1}' | tail -n +2`
   do
     _nick="-"
     _nuuid=$(basename $i)
     get_prop "${i}" "nodename"
-    if [ -n "${VAL}" -a "${VAL}" != "none" ] ; then
+    if [ -n "${VAL}" -a "${VAL}" != "none" -a "${VAL}" != "-" ] ; then
       _nick="${VAL}"
     fi
     echo "${_nuuid}		${_nick}"
@@ -145,11 +145,11 @@ enable_dhcpd()
   AUTOIP="25"
 
   # Go and create entries for each node
-  for i in `zfs list -H -d 1 ${POOL}${NODEDIR} | awk '{print $1}'`
+  for i in `zfs list -H -d 1 ${POOL}${NODEDIR} | awk '{print $1}' | tail -n + 2`
   do
     _node="`basename ${i}`"
     get_prop "${i}" "mac"
-    if [ -z "${VAL}" -o "${VAL}" = "none" ] ; then continue ; fi
+    if [ -z "${VAL}" -o "${VAL}" = "none" -o "${VAL}" = "-" ] ; then continue ; fi
     if [ "${VAL}" = "default" ] ; then
       add_dhcpd_default "$_node"
     else
@@ -178,7 +178,7 @@ add_dhcpd_mac()
   _node="${1}"
   # Figure out the IP adress of this device
   get_prop "${POOL}/${NODEDIR}/${_node}" "ip"
-  if [ -n "${VAL}" -a "${VAL}" != "none" ] ; then
+  if [ -n "${VAL}" -a "${VAL}" != "none" -a "${VAL}" != "-" ] ; then
     _ip="${VAL}"
   else
     # Set an automatic assigned IP
@@ -221,7 +221,7 @@ add_dhcpd_mac()
 get_uuid_from_node_nick()
 {
   # Look through the nodes, return the UUID of a specified nick
-  for i in `zfs list -H -d 1 ${POOL}${NODEDIR} | awk '{print $1}'`
+  for i in `zfs list -H -d 1 ${POOL}${NODEDIR} | awk '{print $1}' | tail -n +2`
   do
     get_prop "${i}" "nodename"
     if [ -n "${VAL}" -a "${VAL}" = "${1}" ] ; then
@@ -330,7 +330,7 @@ unset_prop_value()
 {
   _prop="${1}"
   _oldval="${2}"
-  for i in `zfs list -H -d 1 ${POOL}${NODEDIR} | awk '{print $1}'`
+  for i in `zfs list -H -d 1 ${POOL}${NODEDIR} | awk '{print $1}' | tail -n +2`
   do
     get_prop "${i}" "${_prop}"
     if [ -n "${VAL}" -a "${VAL}" = "${_oldval}" ] ; then
