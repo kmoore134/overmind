@@ -28,7 +28,7 @@ if [ $found -eq 0 ] ; then
   shutdown -p now
 fi
 
-/rescue/mount_nfs ${NFSSERVER}:/overmind/%%NODE%% /
+/rescue/mount_nfs ${NFSSERVER}:/overmind/nodes/%%NODE%% /
 if [ $? -ne 0 ] ; then
   echo "Failed mounting NFS ROOT!"
   read tmp

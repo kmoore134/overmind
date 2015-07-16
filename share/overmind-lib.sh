@@ -110,6 +110,9 @@ destroy_node()
      echo "WARNING: Failed to completely remove node!"
   fi
 
+  # Remove any pxeboot entry
+  rm -rf ${DSET}/pxeboot/${_node} >/dev/null 2>/dev/null
+
   # Restart dhcpd
   enable_dhcpd
 }
