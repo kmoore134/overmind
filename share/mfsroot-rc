@@ -9,17 +9,14 @@ mount -o rw /dev/md0 /
 # Get the passed variables
 HW=`kenv boot.netif.hwaddr`
 NFSSERVER=`kenv boot.nfsroot.server`
-
-# Set a possible STATICIP
-STATICIP="%%STATICIP%%"
+IP=`kenv boot.netif.ip`
 
 found=0
 for i in `ifconfig -l`
 do
   ifconfig $i | grep -q "$HW"
   if [ $? -eq 0 ] ; then
-     # dhclient again <sigh>
-     dhclient $i
+     ifconfig $i ${IP}
      found=1
      break
   fi
