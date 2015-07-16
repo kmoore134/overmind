@@ -98,8 +98,8 @@ destroy_node()
   else
     # Check if this is a nickname
     get_uuid_from_node_nick "${1}"
-    if [ -n "$UUID" ] ; then
-      exit_err "No such node ${1}"
+    if [ -z "$UUID" ] ; then
+      exit_err "No such node: ${1}"
     fi
     _duuid="$UUID"
   fi
@@ -253,7 +253,7 @@ get_uuid_from_node_nick()
   do
     get_prop "${i}" "nodename"
     if [ -n "${VAL}" -a "${VAL}" = "${1}" ] ; then
-      UUID="${VAL}"
+      UUID=$(basename ${i})
       break
     fi
   done
