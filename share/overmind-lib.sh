@@ -86,6 +86,34 @@ disable_selfasso()
   set_prop "${POOL}${DSET}" "nodeself" "NO"
 }
 
+destroy_node()
+{
+  if [ -z "$1" ] ; then
+    exit_err "Missing NODE"
+  fi
+
+  zfs list -H ${POOL}${NODEDIR}/${1} 2>/dev/null >/dev/null
+  if [ $? -eq 0 ] ; then
+    _duuid="${1}"
+  else
+    # Check if this is a nickname
+    get_uuid_from_node_nick "${1}"
+    if [ -n "$UUID" ] ; then
+      exit_err "No such node ${1}"
+    fi
+    _duuid="$UUID"
+  fi
+
+  echo "Removing node: ${_duuid}"
+  zfs destroy -r ${POOL}${NODEDIR}/${_duuid}
+  if [ $? -ne 0 ] ; then
+     echo "WARNING: Failed to completely remove node!"
+  fi
+
+  # Restart dhcpd
+  enable_dhcpd
+}
+
 list_nodes()
 {
   echo "Overmind Nodes:"

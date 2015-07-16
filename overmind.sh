@@ -35,6 +35,20 @@ destroy - Destroy a node
 EOF
 }
 
+usage_destroy()
+{
+
+  cat << EOF
+Overmind usage - destroy
+-----------------------------------------------------------------------
+
+Example:
+# overmind destroy mynode
+
+EOF
+
+}
+
 usage_pull()
 {
 
@@ -109,6 +123,11 @@ fi
 export_props $@
 
 case $1 in
+         destroy) if [ -z "${2}" ] ; then
+		    usage_destroy
+		    exit 1
+                  fi 
+                  destroy_node "$2" ;;
            fetch) parse_fetch ;;
             help) parse_help $2 ;;
             list) list_nodes ;;
