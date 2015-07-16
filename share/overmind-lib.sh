@@ -173,7 +173,7 @@ enable_dhcpd()
   AUTOIP="25"
 
   # Go and create entries for each node
-  for i in `zfs list -H -d 1 ${POOL}${NODEDIR} | awk '{print $1}' | tail -n + 2`
+  for i in `zfs list -H -d 1 ${POOL}${NODEDIR} | awk '{print $1}' | tail -n +2`
   do
     _node="`basename ${i}`"
     get_prop "${i}" "mac"
