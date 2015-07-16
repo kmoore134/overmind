@@ -24,10 +24,14 @@ For more details on a command run "help <command>"
 
  assign - Assign a MAC address to a particular node
   clone - Clone an existing node
+default - Assign a node to be the default PXE node
 destroy - Destroy a node
   fetch - Fetch FreeBSD dist files and create new node
+    get - Get options on nodes or server
+   list - List nodes
    init - Run the first time init of the overmind server
    pull - Pull pre-built node from remote repo
+    set - Set options on nodes or server
 EOF
 }
 
@@ -52,6 +56,12 @@ Optional args:
   arch=<arch>		- Alternative ARCH to pull, by default will use
 			  the host's machine architecture
 			  (Ignored if url= is used)
+
+  ip=<address>		- Assign a static IP <address> to this node
+
+  mac=<address>		- MAC address to assign to this node for PXE booting
+			  Use the address "default" if you want un-assigned
+			  PXE Clients to boot this node automatically
 
   node=<name>		- Nickname for the new NODE. A UUID will also be
 			  assigned automatically for identification

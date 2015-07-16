@@ -12,6 +12,8 @@ NODEDIR="${DSET}/nodes"
 # Default PXE boot dir
 PXEROOT="${DSET}/pxeboot"
 
+#####################################################################
+
 # Exit with a error message
 exit_err() {
   echo >&2 "ERROR: $*"
@@ -103,36 +105,120 @@ enable_dhcpd()
   # Copy over the dhcp.conf.default
   cp ${PREFIX}/share/overmind/dhcpd.conf.default ${PREFIX}/etc/dhcpd.conf
 
+  # Load our properties
   get_prop "${POOL}${DSET}" "dhcphost"
   sed -i '' "s|%%DHCPHOST%%|${VAL}|g" ${PREFIX}/etc/dhcpd.conf
   sed -i '' "s|%%PXESERVERIP%%|${VAL}|g" ${PREFIX}/etc/dhcpd.conf
+  DHCPHOST="${VAL}"
   get_prop "${POOL}${DSET}" "dhcpsubnet"
-  sed -i '' "s|%%DHCPSUBNET%%|${VAL}|g" ${PREFIX}/etc/dhcpd.conf
+  DHCPSUBNET="${VAL}"
   get_prop "${POOL}${DSET}" "dhcpnetmask"
-  sed -i '' "s|%%DHCPNETMASK%%|${VAL}|g" ${PREFIX}/etc/dhcpd.conf
+  DHCPNETMASK="${VAL}"
   get_prop "${POOL}${DSET}" "dhcpstartrange"
-  sed -i '' "s|%%DHCPSTARTRANGE%%|${VAL}|g" ${PREFIX}/etc/dhcpd.conf
+  DHCPSTARTRANGE="${VAL}"
   get_prop "${POOL}${DSET}" "dhcpendrange"
-  sed -i '' "s|%%DHCPENDRANGE%%|${VAL}|g" ${PREFIX}/etc/dhcpd.conf
+  DHCPENRANGE="${VAL}"
 
-  sed -i '' "s|%%PXEROOT%%|${PXEROOT}|g" ${PREFIX}/etc/dhcpd.conf
-  sed -i '' "s|%%GRUBPXE%%|default-node/i386-pc/core.0|g" ${PREFIX}/etc/dhcpd.conf
+  # Clear the USEDIP
+  USEDIP=""
+
+  # Start the auto-assigned IPs at XXX.XXX.XXX.50
+  AUTOIP="50"
+
+  # Go and create entries for each node
+  for i in `zfs list -H -d 1 ${POOL}${NODEDIR} | awk '{print $1}'`
+  do
+    _node="`basename ${i}`"
+    get_prop "${i}" "mac"
+    if [ -z "${VAL}" -o "${VAL}" = "none" ] ; then continue ; fi
+    if [ "${VAL}" = "default" ] ; then
+      add_dhcpd_default "$_node"
+    else
+      add_dhcpd_mac "$_node" "${VAL}"
+    fi
+  done
 
   service isc-dhcpd stop >/dev/null 2>/dev/null
   service isc-dhcpd start
 }
 
+add_dhcpd_default()
+{
+  _node="${1}"
+  echo "subnet ${DHCPSUBNET} netmask ${DHCPNETMASK} {
+ option subnet-mask ${DHCPNETMASK};
+ range ${DHCPSTARTRANGE} ${DHCPENDRANGE};
+ filename \"${_node}/i386-pc/core.0\";
+ next-server ${DHCPHOST};
+ option root-path \"${PXEROOT}\";
+}" >> ${PREFIX}/etc/dhcpd.conf
+}
+
+add_dhcpd_mac()
+{
+  _node="${1}"
+  # Figure out the IP adress of this device
+  get_prop "${POOL}/${NODEDIR}/${_node}" "ip"
+  if [ -n "${VAL}" -a "${VAL}" != "none" ] ; then
+    _ip="${VAL}"
+  else
+    # Set an automatic assigned IP
+    _baseip=$(echo ${DHCPHOST} | cut -d '.' -f 1-3)
+    _startrange=$(echo ${DHCPSTARTRANGE} | cut -d '.' -f 4)
+    while :
+    do
+      _ip="${_baseip}.${AUTOIP}"
+      AUTOIP="$(expr $AUTOIP + 1)"
+      # Break here if this IP isn't in use
+      echo "${USEDIP}" | grep -q "|${_ip}|"
+      if [ $? -ne 0 ] ; then break ; fi
+    done
+    if [ "${AUTOIP}" -gt "${_startrange}" ] ; then
+      echo "ERROR: Automatic IP falls within DHCPD STARTRANGE."
+      echo "Change the dhcpstartrange property ($DHCPSTARTRANGE)"
+      return
+    fi
+  fi
+
+  # Check if the IP has already been assigned
+  echo "${USEDIP}" | grep -q "|${_ip}|"
+  if [ $? -eq 0 ] ; then
+    echo "ERROR: ${_ip} already in use. Skipping DHCP setup of node ${_node}"
+    return
+  fi
+
+  # Mark this IP as used
+  USEDIP="${USEDIP}|${_ip}|"
+
+  echo "host ${2} {
+ hardware ethernet ${2};
+ fixed-address ${_ip};
+ filename \"${1}/i386-pc/core.0\";
+ next-server ${DHCPHOST};
+ option root-path \"${PXEROOT}\";
+}" >> ${PREFIX}/etc/dhcpd.conf
+}
+
 get_uuid_from_node_nick()
 {
-
+  # Look through the nodes, return the UUID of a specified nick
+  for i in `zfs list -H -d 1 ${POOL}${NODEDIR} | awk '{print $1}'`
+  do
+    get_prop "${i}" "nodename"
+    if [ -n "${VAL}" -a "${VAL}" = "${1}" ] ; then
+      UUID="${VAL}"
+      break
+    fi
+  done
+  unset UUID
 }
 
 # Fetch a fresh node from FreeBSD dist files
 fetch_freebsd_node()
 {
   # Check if node exists
-  if [ -n "$om_node" ] ; then
-    get_uuid_from_node_nick
+  if [ -n "${om_node}" ] ; then
+    get_uuid_from_node_nick "${om_node}"
     if [ -n "$UUID" ] ; then
       exit_err "A node with the nickname $om_node already exists"
     fi
@@ -201,10 +287,46 @@ fetch_freebsd_node()
      exit_err "Failed setting sharenfs on ${POOL}${NDSET}"
   fi
 
+  # Set the node nickname if specified
+  if [ -n "${om_node}" ] ; then
+    set_prop "${POOL}${NDSET}" "nodename" "${om_node}"
+  fi
+
+  # Set the mac property if specified
+  if [ -n "${om_mac}" ] ; then
+    assign_mac "${om_node}" "${om_mac}"
+  fi
+
+  # Set the os type
+  set_prop "${POOL}${NDSET}" "nodeos" "freebsd"
+
   setup_freebsd_grub "${nuuid}"
 
   # Restart dhcpd
   enable_dhcpd
+}
+
+# Unset a particular node property if it == value
+unset_prop_value()
+{
+  _prop="${1}"
+  _oldval="${2}"
+  for i in `zfs list -H -d 1 ${POOL}${NODEDIR} | awk '{print $1}'`
+  do
+    get_prop "${i}" "${_prop}"
+    if [ -n "${VAL}" -a "${VAL}" = "${_oldval}" ] ; then
+      set_prop "${i}" "${_prop}" "none"
+    fi
+  done
+}
+
+# Assign a MAC address to a node
+assign_mac()
+{
+  _node="${1}"
+  _mac="${2}"
+  unset_prop_value "mac" "${_mac}"
+  set_prop "${POOL}${NODEDIR}/${_node}" "mac" "${_mac}"
 }
 
 create_freebsd_mfsroot()
@@ -238,11 +360,17 @@ setup_freebsd_grub()
   _node="$1"
   NDSET="${NODEDIR}/${_node}"
 
+
   echo "Setting up grub.cfg"
   if [ ! -d "${NDSET}/boot/grub" ] ; then
     mkdir ${NDSET}/boot/grub
   fi
-  rc_halt "cp ${PREFIX}/share/overmind/grub.cfg.default ${NDSET}/boot/grub/grub.cfg"
+
+  # Use the grub.cfg from the node
+  if [ ! -e "${NDSET}/boot/grub.cfg.overmind" ] ; then
+    rc_halt "cp ${PREFIX}/share/overmind/grub.cfg.freebsd ${NDSET}/boot/grub.cfg.overmind"
+  fi
+  rc_halt "cp ${NDSET}/boot/grub.cfg.overmind ${NDSET}/boot/grub/grub.cfg"
 
   get_prop "${POOL}${DSET}" "dhcphost"
   sed -i '' "s|%%PXESERVERIP%%|${VAL}|g" ${NDSET}/boot/grub/grub.cfg
@@ -370,7 +498,7 @@ do_init()
   set_prop "${POOL}${DSET}" "dhcphost" "192.168.10.1"
   set_prop "${POOL}${DSET}" "dhcpsubnet" "192.168.10.0"
   set_prop "${POOL}${DSET}" "dhcpnetmask" "255.255.255.0"
-  set_prop "${POOL}${DSET}" "dhcpstartrange" "192.168.10.50"
+  set_prop "${POOL}${DSET}" "dhcpstartrange" "192.168.10.100"
   set_prop "${POOL}${DSET}" "dhcpendrange" "192.168.10.250"
   set_prop "${POOL}${DSET}" "pxeroot" "${POOL}${DNODE}"
 

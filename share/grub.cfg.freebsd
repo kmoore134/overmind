@@ -1,0 +1,23 @@
+
+set timeout=10
+
+menuentry 'OverMind Default PXE Boot' --class os {
+  insmod net
+  insmod tftp
+  insmod gzio
+  insmod part_gpt
+
+  set net_default_server=%%PXESERVERIP%%
+
+  echo 'Loading default network kernel:'
+  kfreebsd (tftp)/default-node/boot/kernel/kernel
+  kfreebsd_loadenv (tftp)/default-node/boot/device.hints
+  kfreebsd_module_elf (tftp)/default-node/boot/kernel/tmpfs.ko
+  kfreebsd_module_elf (tftp)/default-node/boot/kernel/crypto.ko
+  echo 'Loading mfsroot.gz:'
+  kfreebsd_module (tftp)/default-node/boot/mfsroot.gz type=mfs_root
+  set kFreeBSD.boot.nfsroot.server=$pxe_default_server
+  set kFreeBSD.boot.netif.hwaddr=$net_pxe_mac
+  set kFreeBSD.boot.netif.ip=$net_pxe_ip
+  set kFreeBSD.dhcp.host-name=$net_pxe_hostname
+}

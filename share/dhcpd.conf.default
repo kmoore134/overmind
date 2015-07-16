@@ -4,10 +4,4 @@ default-lease-time 600;
 max-lease-time 7200;
 ddns-update-style none;
 option routers %%DHCPHOST%%;
-subnet %%DHCPSUBNET%% netmask %%DHCPNETMASK%% {
- option subnet-mask %%DHCPNETMASK%%;
- range %%DHCPSTARTRANGE%% %%DHCPENDRANGE%%;
- filename "%%GRUBPXE%%";
- next-server %%PXESERVERIP%%;
- option root-path "%%PXEROOT%%";
-}
+
