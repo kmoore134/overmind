@@ -254,7 +254,7 @@ get_uuid_from_node_nick()
     get_prop "${i}" "nodename"
     if [ -n "${VAL}" -a "${VAL}" = "${1}" ] ; then
       UUID=$(basename ${i})
-      break
+      return
     fi
   done
   unset UUID
