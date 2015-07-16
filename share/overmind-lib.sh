@@ -164,7 +164,7 @@ enable_dhcpd()
   get_prop "${POOL}${DSET}" "dhcpstartrange"
   DHCPSTARTRANGE="${VAL}"
   get_prop "${POOL}${DSET}" "dhcpendrange"
-  DHCPENRANGE="${VAL}"
+  DHCPENDRANGE="${VAL}"
 
   # Clear the USEDIP
   USEDIP=""
@@ -419,11 +419,13 @@ setup_freebsd_grub()
   fi
   rc_halt "cp ${NDSET}/boot/grub.cfg.overmind ${NDSET}/boot/grub/grub.cfg"
 
+  # Massage the grub.cfg file
   get_prop "${POOL}${DSET}" "dhcphost"
   sed -i '' "s|%%PXESERVERIP%%|${VAL}|g" ${NDSET}/boot/grub/grub.cfg
   sed -i '' "s|%%PXEROOT%%|${DNODE}|g" ${NDSET}/boot/grub/grub.cfg
   get_prop "${POOL}${DSET}" "dhcpnetmask"
   sed -i '' "s|%%PXESERVERNETMASK%%|${VAL}|g" ${NDSET}/boot/grub/grub.cfg
+  sed -i '' "s|%%NODE%%|${_node}|g" ${NDSET}/boot/grub/grub.cfg
 
   if [ -d "${PXEROOT}/${_node}" ] ; then
     rm -rf ${PXEROOT}/${_node}
